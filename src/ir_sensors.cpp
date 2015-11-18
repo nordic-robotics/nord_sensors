@@ -4,11 +4,28 @@
 #include <cmath>
 
 template<class T>
-std::function<T(T)> make_lorentz(T height, T center, T hwhm)
-{
-    return [=](T x) {
-        return height / (1 + std::pow((x - center) / hwhm, 2));
-    };
+
+float front_inverse(int x){
+		return (-40.19*exp(x*(-0.004891))+41.03*exp(x*(-0.004897)));
+}
+float back_inverse(int x){
+		return (0.05347*exp(x*(0.0004147))+1.9*exp(x*(-0.008829)));
+}
+
+float lfront_inverse(int x){
+		return (0.04444*exp(x*(0.001731))+3.319*exp(x*(-0.01844)));
+}
+
+float lback_inverse(int x){
+		return (77.26*exp(x*(-0.04616))+0.5006*exp(x*(-0.005953)));
+}
+
+float rback_inverse(int x){
+		return (0.3986*exp(x*(-0.04507))+0.515*exp(x*(-0.00663)));
+}
+
+float rfront_inverse(int x){
+		return (0.4628*exp(x*(-0.1022))+0.515*exp(x*(-0.00663)));
 }
 
 int main(int argc, char** argv)
@@ -18,25 +35,40 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "nord_sensors");
     ros::NodeHandle n;
 
-    auto lorentz1 = make_lorentz(0.228f, 73.63f, 13.0f);
-    auto lorentz2 = make_lorentz(62.31f, -184.0f, 25.10f);
-    auto long_lorentz = [&](float x) { return lorentz1(x) + lorentz2(x); };
-
-    auto lorentz3 = make_lorentz(126.8f, -86.93f, 8.824f);
-    auto short_lorentz = [&](float x) { return x > 35 ? lorentz3(x) : 0; };
-
     ros::Publisher ir_pub = n.advertise<IRSensors>("/nord/sensors/ir", 10);
 
     ros::Subscriber adc_sub = n.subscribe<ADConverter>("/arduino/adc", 10,
         [&](const ADConverter::ConstPtr& msg) {
              IRSensors ir;
-             ir.back = long_lorentz(msg->ch5);
-             ir.front = long_lorentz(msg->ch6);
-             ir.left_front = short_lorentz(msg->ch1);
-             ir.left_back = short_lorentz(msg->ch3);
-             ir.right_back = short_lorentz(msg->ch7);
-             ir.right_front = short_lorentz(msg->ch8);
-             ir_pub.publish(ir);
+			 
+			ir.back = back_inverse(msg->ch5);
+			
+			ir.front = front_inverse(msg->ch6);
+			 
+			if(msg->ch1>320){
+				ir.left_front = lfront_inverse(0);
+			}else{
+				ir.left_front = lfront_inverse(msg->ch1);
+			}
+			
+			if(msg->ch3>320){
+				ir.left_back = lback_inverse(0);
+			}else{
+				ir.left_back = lback_inverse(msg->ch3);
+			}
+			
+			if(msg->ch7>400){
+				ir.right_back = rback_inverse(0);
+			}else{
+				ir.right_back = rback_inverse(msg->ch7);
+			}
+			
+			if(msg->ch8>320){
+				ir.right_front = rfront_inverse(0);
+			}else{
+				ir.right_front = rfront_inverse(msg->ch8);
+			}
+            ir_pub.publish(ir);
         });
 
     ros::spin();
