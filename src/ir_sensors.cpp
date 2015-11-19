@@ -4,10 +4,10 @@
 #include <cmath>
 
 template<class T>
-std::function<T(T)> make_lorentz(T height, T center, T hwhm)
+std::function<T(T)> make_lorentz(T height, T center, T fwhm)
 {
     return [=](T x) {
-        return height / (1 + std::pow((x - center) / hwhm, 2));
+        return height / (1 + std::pow((x - center) / fwhm, 2));
     };
 }
 
@@ -18,24 +18,38 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "nord_sensors");
     ros::NodeHandle n;
 
-    auto lorentz1 = make_lorentz(0.228f, 73.63f, 13.0f);
-    auto lorentz2 = make_lorentz(62.31f, -184.0f, 25.10f);
-    auto long_lorentz = [&](float x) { return lorentz1(x) + lorentz2(x); };
+    auto lorentz1 = make_lorentz(0.337f, 107.55f, 43.76f);
+    auto lorentz2 = make_lorentz(0.479f, 140.18f, 231.33f);
+    auto back_lorentz = [&](float x) { return lorentz1(std::max(x, 110)) + lorentz2(std::max(x, 110)) + 0.003; };
 
-    auto lorentz3 = make_lorentz(126.8f, -86.93f, 8.824f);
-    auto short_lorentz = [&](float x) { return x > 35 ? lorentz3(x) : 0; };
+    auto lorentz3 = make_lorentz(0.4157f, 109.9f, 68.31f);
+    auto front_lorentz = [&](float x) { return lorentz3(std::max(x, 110)); };
+	
+	auto lorentz5 = make_lorentz(0.42f, -1.157f, 29.7f);
+    auto lorentz6 = make_lorentz(0.227f, 29.78f, 197.32f);
+    auto Rback_lorentz = [&](float x) { return lorentz5(x) + lorentz6(x) + 0.085; };
+
+    auto lorentz4 = make_lorentz(0.864f, 80.48f, 59.85f);
+    auto Lfront_lorentz = [&](float x) { return lorentz4(std::max(x, 80)) + 0.097; };
+	
+	auto lorentz7 = make_lorentz(0.569f, 101.96f, 62.96f);
+    auto Lback_lorentz = [&](float x) { return lorentz7(std::max(x, 100)) + 0.1; };
+	
+	auto lorentz8 = make_lorentz(132.3f, -77.17f, 12.35f);
+    auto Rfront_lorentz = [&](float x) { return lorentz8(x) +0.09; };
+	
 
     ros::Publisher ir_pub = n.advertise<IRSensors>("/nord/sensors/ir", 10);
 
     ros::Subscriber adc_sub = n.subscribe<ADConverter>("/arduino/adc", 10,
         [&](const ADConverter::ConstPtr& msg) {
              IRSensors ir;
-             ir.back = long_lorentz(msg->ch5);
-             ir.front = long_lorentz(msg->ch6);
-             ir.left_front = short_lorentz(msg->ch1);
-             ir.left_back = short_lorentz(msg->ch3);
-             ir.right_back = short_lorentz(msg->ch7);
-             ir.right_front = short_lorentz(msg->ch8);
+             ir.back = back_lorentz(msg->ch5);
+             ir.front = front_lorentz(msg->ch6);
+             ir.left_front = Lfront_lorentz(msg->ch1);
+             ir.left_back = Lback_lorentz(msg->ch3);
+             ir.right_back = Rback_lorentz(msg->ch7);
+             ir.right_front = Rfront_lorentz(msg->ch8);
              ir_pub.publish(ir);
         });
 
