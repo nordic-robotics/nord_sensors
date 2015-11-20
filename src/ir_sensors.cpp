@@ -3,6 +3,16 @@
 #include "nord_messages/IRSensors.h"
 #include <cmath>
 
+
+float ir_back_temp;
+float ir_front_temp;
+float ir_left_front_temp;
+float ir_left_back_temp;
+float ir_right_back_temp;
+float ir_right_front_temp;
+
+const float ALPHA=0.15f;
+
 template<class T>
 std::function<T(T)> make_lorentz(T height, T center, T fwhm)
 {
@@ -45,11 +55,29 @@ int main(int argc, char** argv)
         [&](const ADConverter::ConstPtr& msg) {
              IRSensors ir;
              ir.back = back_lorentz(msg->ch5);
+             ir.back=ir.back+ALPHA*(ir_back_temp-ir.back);
+             ir_back_temp=back_lorentz(msg->ch5);
+
              ir.front = front_lorentz(msg->ch6);
+             ir.front=ir.front+ALPHA*(ir_front_temp-ir.front);
+             ir_front_temp=back_lorentz(msg->ch6);
+
              ir.left_front = Lfront_lorentz(msg->ch1);
+             ir.left_front=ir.left_front+ALPHA*(ir_left_front_temp-ir.left_front);
+             ir_left_front_temp=back_lorentz(msg->ch1);
+
              ir.left_back = Lback_lorentz(msg->ch3);
+             ir.left_back=ir.left_back+ALPHA*(ir_left_back_temp-ir.left_back);
+             ir_left_back_temp=back_lorentz(msg->ch3);
+
              ir.right_back = Rback_lorentz(msg->ch7);
+             ir.right_back=ir.right_back+ALPHA*(ir_right_back_temp-ir.right_back);
+             ir_right_back_temp=back_lorentz(msg->ch7);
+
              ir.right_front = Rfront_lorentz(msg->ch8);
+             ir.right_front=ir.right_front+ALPHA*(ir_right_front_temp-ir.right_front);
+             ir_right_front_temp=back_lorentz(msg->ch8);
+
              ir_pub.publish(ir);
         });
 
