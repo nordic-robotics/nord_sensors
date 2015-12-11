@@ -8,6 +8,7 @@ set(CMAKE_CXX_FLAGS "--std=c++11 ${CMAKE_CXX_FLAGS}")
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  ras_arduino_msgs
 )
 
 ## System dependencies are found with CMake's conventions
